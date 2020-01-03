@@ -18,8 +18,8 @@ union semun {
 	unsigned short *array;	//Array for GETALL, SETALL
 	struct seminfo *__buf;	//Buffer for IPC_INFO (Linux-specific)
 };
-#define SHKEY 24601
-#define SEMKEY 24602
+#define SHMKEY 23444
+#define SEMKEY 99918
 
 union semun us;
 struct sembuf sb;
@@ -45,7 +45,7 @@ int createStory(){
     printf("semaphore created\n");
   }
   // create shared Memory
-  int shmd = shmget(SHM_KEY, sizeof(shmd), IPC_CREAT | IPC_EXCL | 0640);
+  int shmd = shmget(SHMKEY, sizeof(shmd), IPC_CREAT | IPC_EXCL | 0640);
   if(shmd < 0) {
     printf("failed to create shared memory\n");
     printf("error: %s\n", strerror(errno));
@@ -79,7 +79,7 @@ int removeStory(){
         return -3;
       }
       semop(sd,&sb,1);
-      int shmd = shmget(SHM_KEY, sizeof(shmd), 0640);
+      int shmd = shmget(SHMKEY, sizeof(shmd), 0640);
       if (shmd < 0) {
         printf("shared memory error: %s\n", strerror(sd));
         return -3;

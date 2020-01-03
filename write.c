@@ -18,8 +18,8 @@ union semun {
 	unsigned short *array;	//Array for GETALL, SETALL
 	struct seminfo *__buf;	//Buffer for IPC_INFO (Linux-specific)
 };
-#define SHKEY 24601
-#define SEMKEY 24602
+#define SHMKEY 23444
+#define SEMKEY 99918
 
 int shmd,sd,fd;
 struct sembuf sem_1;
@@ -36,7 +36,7 @@ int main() {
     return -1;
   }
   semop(sd,&sem_1,1);
-  shmd=shmget(SHKEY,sizeof(char *),0);
+  shmd=shmget(SHMKEY,sizeof(char *),0);
   if(shmd < 0){
     printf("shared memory Error: %s\n", strerror(shmd));
     return -1;
@@ -48,8 +48,9 @@ int main() {
   }
 
   //grabbing last line and requesting new line
-  char * data=shmat(shmd,0,0);
-  printf("Last line: %s\n",data);
+  printf("AHHH\n");
+  char * lastline = shmat(shmd,0,0);
+  printf("Last line: %s\n",lastline);
   char newline[1000];
   printf("Please enter the next line of your story:\n");
   fgets(newline,1000,stdin);
