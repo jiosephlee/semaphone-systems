@@ -18,45 +18,43 @@ union semun {
 	unsigned short *array;	//Array for GETALL, SETALL
 	struct seminfo *__buf;	//Buffer for IPC_INFO (Linux-specific)
 };
-#define SHMKEY 23444
-#define SEMKEY 99918
+#define SHMKEY 23445
+#define SEMKEY 99911
 
+int semd, shmd, fd; // desecriptors
 union semun us;
 struct sembuf sb;
 
 int createStory(){
   printf("creating story...\n\n");
-  // create file
-  int fd = open("story.txt", O_CREAT | O_TRUNC, 0640);
-  if(fd < 0) {
-    printf("failed to create a file\n");
-    printf("error: %s\n", strerror(errno));
+  // creating semaphore
+  semd = semget(SEMKEY, 1, IPC_CREAT | IPC_EXCL | 0644);
+  if (semd < 0) {
+    printf("error %d: %s\n", errno, strerror(errno));
     return -1;
-  } else {
-    printf("file created\n");
   }
-  // create semaphore
-  int sd = semget(SEMKEY, 1, IPC_CREAT | IPC_EXCL | 0644);
-  if(sd < 0) {
-    printf("failed to create a semaphore\n");
-    printf("error: %s\n", strerror(errno));
+  printf("semaphore created\n");
+  semctl(semd, 0, SETVAL, us);
+  //creating shared memory
+  shmd = shmget(SHMKEY, sizeof(int) , IPC_CREAT | 0644);
+  if (shmd < 0){
+    printf("error %d: %s\n", errno, strerror(errno));
     return -1;
-  } else {
-    printf("semaphore created\n");
   }
-  // create shared Memory
-  int shmd = shmget(SHMKEY, sizeof(shmd), IPC_CREAT | IPC_EXCL | 0640);
-  if(shmd < 0) {
-    printf("failed to create shared memory\n");
-    printf("error: %s\n", strerror(errno));
+  printf("shared memory created\n");
+  //creating file
+  fd = open("story.txt", O_CREAT | O_TRUNC | O_RDWR, 0644);
+  if (fd < 0){
+    printf("error %d: %s\n", errno, strerror(errno));
     return -1;
-  } else {
-    printf("shared memory created\n");
   }
+  close(fd);
+  printf("file created\n");
+
 }
 
 int viewStory(){
-  int fd = open("story.txt",O_RDONLY);
+  fd = open("story.txt",O_RDONLY);
   if ( fd < 0 ){
     printf("error: %s\n", strerror(fd));
     return -2;
@@ -71,31 +69,30 @@ int viewStory(){
 int removeStory(){
       // Print Contents
       viewStory();
-      remove("story.txt");
-      //Get Semaphore
-      int sd = semget(SEMKEY, 1, 0640);
-      if(sd < 0){
-        printf("semaphore error: %s\n", strerror(sd));
-        return -3;
+      shmd = shmget(SHMKEY, sizeof(int), 0);
+      if (shmd< 0){
+        printf("sharedy memory error %d: %s\n", errno, strerror(errno));
+        return -1;
       }
-      semop(sd,&sb,1);
-      int shmd = shmget(SHMKEY, sizeof(shmd), 0640);
-      if (shmd < 0) {
-        printf("shared memory error: %s\n", strerror(sd));
-        return -3;
-      }
-
-      //Remove Shared Memory
       shmctl(shmd, IPC_RMID, 0);
-      printf("removed shared memory\n");
-      //Remove Semaphore
-      semctl(sd, 0, IPC_RMID, 0);
-      printf("removed semaphores\n");
-    return 1;
+
+      printf("shared memory removed\n");
+
+      remove("story.txt");
+      printf("file removed\n");
+
+      semd = semget(SEMKEY, 1, 0);
+      if (semd< 0) {
+        printf("error %d: %s\n", errno, strerror(errno));
+        return -1;
+      }
+      semop(semd, &sb, 1);
+      semctl(semd, IPC_RMID, 0);
+      printf("semaphore removed\n");
 }
 
 int execute (char *args[]){
-  int debug = 1;
+  int debug = 0;
   if(strcmp(args[1],"-c")==0){
     debug = createStory();
   } else if(strcmp(args[1],"-r")==0){
@@ -116,7 +113,7 @@ int main(int argc, char *argv[]) {
   if(argc <= 1) {
     printf("%s\n", "You may access this story by using the following flags...");
     printf("%s\n", "\"-c\" to create story");
-    printf("%s\n", "\"-r\" to remove the story's contents");
+    printf("%s\n", "\"-r\" to remove story");
     printf("%s\n", "\"-v\" to read story's contents");
   } else {
     int executed = execute(argv);

@@ -18,48 +18,50 @@ union semun {
 	unsigned short *array;	//Array for GETALL, SETALL
 	struct seminfo *__buf;	//Buffer for IPC_INFO (Linux-specific)
 };
-#define SHMKEY 23444
-#define SEMKEY 99918
+#define SHMKEY 23445
+#define SEMKEY 99911
 
-int shmd,sd,fd;
-struct sembuf sem_1;
 
 int main() {
-  sem_1.sem_num=0;
-  sem_1.sem_op = -1;
+  int shmd,semd,fd;
+  struct sembuf sem;
+  sem.sem_num=0;
+  sem.sem_op = -1;
+  sem.sem_flg = SEM_UNDO;
 
   //catching for errors
   printf("trying to get in...\n");
-  sd=semget(SEMKEY,1,0);
-  if(sd < 0){
-    printf("semaphore Error: %s\n", strerror(sd));
+  semd=semget(SEMKEY,1,0);
+  if(semd < 0){
+    printf("semaphore Error: %s\n", strerror(semd));
     return -1;
   }
-  semop(sd,&sem_1,1);
-  shmd=shmget(SHMKEY,sizeof(char *),0);
+  semop(semd,&sem,1);
+
+  shmd=shmget(SHMKEY,sizeof(int),0);
   if(shmd < 0){
     printf("shared memory Error: %s\n", strerror(shmd));
     return -1;
   }
+
   fd = open("story.txt",O_WRONLY|O_APPEND);
   if(fd < 0){
     printf("file Error: %s\n", strerror(fd));
     return -1;
   }
 
-  //grabbing last line and requesting new line
-  printf("AHHH\n");
-  char * lastline = shmat(shmd,0,0);
-  printf("Last line: %s\n",lastline);
-  char newline[1000];
+  //grabbing last line
+  char * data = shmat(shmd,0,0);
+  printf("Last line: %s\n",data);
+  //grabs new line
   printf("Please enter the next line of your story:\n");
-  fgets(newline,1000,stdin);
-  write(fd,newline,strlen(newline));
+  fgets(data,sizeof(data),stdin);
+  write(fd,data,strlen(data));
   printf("\n");
   close(fd);
   shmdt(data);
-  sem_1.sem_op=1;
-  semop(sd,&sem_1,1);
+  sem.sem_op=1;
+  semop(semd,&sem,1);
   return 0;
 
 }
